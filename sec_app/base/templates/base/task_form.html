@@ -1,0 +1,8 @@
+<h1>Task form</h1>
+<a href="% url 'tasks' %"> Go back</a>
+<form method="POST" action="">
+    {%csrf_token%}<!--if this is in one of the lists remove it and percent acts as a thg so that the value doesnt show-->
+    {{form.as_p}} <!--django hs an integrated form thg that works-->
+    <input type="submit" value="Submit">
+
+</form>
