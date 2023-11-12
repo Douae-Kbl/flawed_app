@@ -23,6 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-+_h!nr6vx^i+(=(f^0c49i%5+s6sqxxll@jb(*f9aulj0tf5)c'
 
 # SECURITY WARNING: don't run with debug turned on in production!
+
+#FLAW 3:A05:2021-Security Misconfiguration
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -68,6 +70,9 @@ TEMPLATES = [
     },
 ]
 
+
+
+
 WSGI_APPLICATION = 'sec_app.wsgi.application'
 
 
@@ -84,8 +89,9 @@ DATABASES = {
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
-
-AUTH_PASSWORD_VALIDATORS = [
+#FLAW 4 A07:2021:Identification and Authentication Failures
+AUTH_PASSWORD_VALIDATORS = []
+'''AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
@@ -98,8 +104,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
-]
-
+]'''
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -123,3 +128,9 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+#FLAW 5 A02:2021-Cryptographic Failures
+AUTHENTICATION_BACKENDS = [
+    'base.password_backend.passwordbackend',
+    'django.contrib.auth.backends.ModelBackend',
+]

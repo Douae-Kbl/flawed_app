@@ -1,4 +1,5 @@
 from typing import Any
+from django.db import connection
 from django.shortcuts import render,redirect
 from django.http import HttpRequest, HttpResponse
 from django.views.generic.list import ListView
@@ -12,64 +13,74 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 
 from .models import task
-# Create your views here.
-'''
-HNAYA USER FLAW CAN BE HAD HIT LA L USER ACCCEDA LINK W ANA HAY
-HADI HE WILL BE ABLE TO ACCESS STUFF MACHI DIALO hadik import loginrequiredmixin
-page it oveerides the not logged in user to is in setting.py
-also users can access other users stuff so you add getcontext_data to prevent them
-'''
- 
 
 class userlogin(LoginView):
     template_name='base/login.html'
-    #fields='__all__'
     redirect_authenticated_user= True
 
     def get_success_url(self) -> str:
-        return reverse_lazy('tasks') #difference between this and otehrs is makaynch f attrib i guess-->
+        return reverse_lazy('tasks') 
 
 
 class useregister(FormView):
     template_name='base/register.html'
     form_class= UserCreationForm
     success_url=reverse_lazy('tasks')
+
     def form_valid(self,form):
-        user=form.save()
+        #user=form.save()
+        #FLAW 5 A02:2021-Cryptographic Failures
+        #START
+        user = form.save(commit=False)
+        plaintext_password = form.cleaned_data['password1'] 
+        user.password = plaintext_password
+        user.save()
+        user.backend = 'base.password_backend.passwordbackend'
+        #CONTINUATION IN settings.py+password_backend.py
         if user is not None:
             login(self.request,user)
         return super(useregister,self).form_valid(form)
+    
+
     def get(self,*args, **kwargs) :
         if self.request.user.is_authenticated:
             return redirect('tasks')
-        return super(useregister,self).get(*args, **kwargs) #redirects to main page if u try to register when ure already logged in
+        return super(useregister,self).get(*args, **kwargs) 
 
 class tasklist(LoginRequiredMixin,ListView):
     model= task
-    #if u dont have ur html thg i taybda b the first name hna it will giev u an error que makaynch a correspoonding template
-    context_object_name='tasks' #to change dik objectlist f html temp
+    context_object_name='tasks'
     def get_context_data(self, **kwargs):
         context=super().get_context_data(**kwargs)
-        context['tasks']= context['tasks'].filter(user=self.request.user) #make sure that only teh user can acces it
-        context['count']= context['tasks'].filter(complete=False).count() #get count of incomplete items
+        #FLAW 1 A01:2021:Broken Access Control
+        #context['tasks']= context['tasks'].filter(user=self.request.user) 
+        context['count']= context['tasks'].filter(complete=False).count() 
 
         search_input=self.request.GET.get('search-area') or ''
+        ''' if search_input:
+                context['tasks']=context['tasks'].filter(title__icontains=search_input)'''
+        #FLAW 2:A03:2021:Injection
+        #START
         if search_input:
-            context['tasks']=context['tasks'].filter(title__icontains=search_input) #search change icontains to startwith if u want more to search by what it starts with
+            with connection.cursor() as cursor:
+                query = "SELECT * FROM base_task WHERE title LIKE '%%%s%%'" % search_input
+                cursor.execute(query)
+                rows = cursor.fetchall()
+            context['tasks'] = [self.model(id=row[0], user_id=row[1], title=row[2], description=row[3], complete=row[4], time=row[5]) for row in rows]
+        else:
+            context['tasks'] = self.model.objects.all()
+        #END
         context['search_input']= search_input
         return context
 
 class taskdetail(LoginRequiredMixin,DetailView):
     model= task
     context_object_name='task'
-    #you can change template name by using template_name = 'base/x.html'
 
 class taskcreate(LoginRequiredMixin,CreateView):
     model = task
-    #by default this view had a model form
-    fields=['title','description','complete']#stops it from listing all users
-    success_url=reverse_lazy('tasks') #when an item is created user is sent back to the list
-    '''to limit creation to only teh user logeed in instead of having user choose cah ydir'''
+    fields=['title','description','complete']
+    success_url=reverse_lazy('tasks') 
     def form_valid(self,form):
         form.instance.user=self.request.user
         return super(taskcreate,self).form_valid(form)
@@ -85,4 +96,3 @@ class taskdelete(LoginRequiredMixin,DeleteView):
     fields='__all__'
     template_name = 'base/task_delete.html'
     success_url=reverse_lazy('tasks')
-
